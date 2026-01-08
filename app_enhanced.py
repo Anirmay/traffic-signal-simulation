@@ -111,6 +111,12 @@ if mode == "Single Junction":
     junction_id = 0
     controller = multi_controller.junctions[junction_id]['controller']
     
+    # Handle Reset Button BEFORE rendering sliders
+    if st.sidebar.button("🔄 Reset", key="reset_btn", use_container_width=True):
+        multi_controller.reset_all()
+        st.session_state.simulation_active = False
+        st.rerun()
+    
     # Input sliders
     lanes_input = {}
     for lane in ['North', 'South', 'East', 'West']:
@@ -136,14 +142,6 @@ if mode == "Single Junction":
     with col2:
         if st.button("⏹️ Stop", key="stop_btn", use_container_width=True):
             st.session_state.simulation_active = False
-    
-    if st.sidebar.button("🔄 Reset", key="reset_btn", use_container_width=True):
-        multi_controller.reset_all()
-        st.session_state.simulation_active = False
-        # Reset slider values
-        for lane in ['North', 'South', 'East', 'West']:
-            st.session_state[f"slider_{lane}"] = 0
-        st.rerun()
     
     # Display current junction
     st.markdown(f"### 🏢 {multi_controller.junctions[0]['name']} Intersection")
@@ -276,6 +274,12 @@ elif mode == "Multi-Junction":
     # Input sliders for selected junction
     st.sidebar.markdown("### 📊 Vehicle Input")
     
+    # Handle Reset Button BEFORE rendering sliders
+    if st.sidebar.button("🔄 Reset All", key="reset_multi", use_container_width=True):
+        multi_controller.reset_all()
+        st.session_state.simulation_active = False
+        st.rerun()
+    
     controller = multi_controller.junctions[junction_id]['controller']
     
     for lane in ['North', 'South', 'East', 'West']:
@@ -298,14 +302,6 @@ elif mode == "Multi-Junction":
     with col2:
         if st.button("⏹️ Stop All", key="stop_multi", use_container_width=True):
             st.session_state.simulation_active = False
-    
-    if st.sidebar.button("🔄 Reset All", key="reset_multi", use_container_width=True):
-        multi_controller.reset_all()
-        # Reset all slider values for all junctions
-        for j in range(multi_controller.num_junctions):
-            for lane in ['North', 'South', 'East', 'West']:
-                st.session_state[f"slider_j{j}_{lane}"] = 0
-        st.rerun()
     
     # Display all junctions
     st.markdown("### 🏙️ Multi-Junction Traffic Network")

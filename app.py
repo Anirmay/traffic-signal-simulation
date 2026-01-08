@@ -72,6 +72,13 @@ st.markdown("""
 st.sidebar.markdown("### 📊 Vehicle Input Panel")
 st.sidebar.markdown("Adjust vehicle count for each lane using sliders:")
 
+# Handle Reset Button BEFORE rendering sliders
+if st.sidebar.button("🔄 Reset", key="reset_btn", use_container_width=True):
+    controller.reset()
+    st.session_state.simulation_active = False
+    st.session_state.update_counter = 0
+    st.rerun()
+
 # Input sliders for each lane
 lanes_input = {}
 for lane in ['North', 'South', 'East', 'West']:
@@ -99,18 +106,6 @@ with col1:
 with col2:
     if st.button("⏹️ Stop Simulation", key="stop_btn", use_container_width=True):
         st.session_state.simulation_active = False
-
-if st.sidebar.button("🔄 Reset", key="reset_btn", use_container_width=True):
-    # Reset controller
-    controller.reset()
-    st.session_state.simulation_active = False
-    st.session_state.update_counter = 0
-    
-    # Reset slider values in session state
-    for lane in ['North', 'South', 'East', 'West']:
-        st.session_state[f"slider_{lane}"] = 0
-    
-    st.rerun()
 
 # ============================================================================
 # MAIN CONTENT: SIGNAL STATE DISPLAY
