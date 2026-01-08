@@ -530,11 +530,10 @@ elif mode == "🗺️ Maps View":
         tiles="OpenStreetMap"
     )
     
-    # Lane coordinates relative to junction center (example: NYC intersection)
-    lanes_data = {
     # Use default multi-controller for Maps View
     controller = multi_controller.junctions[0]['controller']
     
+    # Lane coordinates relative to junction center (example: NYC intersection)
     lanes_data = {
         'North': {
             'coords': [center_lat + 0.003, center_lon],
