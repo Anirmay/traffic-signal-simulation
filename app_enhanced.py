@@ -505,8 +505,16 @@ elif mode == "Analytics Dashboard":
         )
     
     if st.button("🔄 Clear Analytics"):
+        # Clear all analytics logs
         analytics.clear_logs()
-        st.success("Analytics cleared!")
+        
+        # Also reset all junctions to clear current traffic state
+        for junction_id in range(multi_controller.num_junctions):
+            for lane in ['North', 'South', 'East', 'West']:
+                multi_controller.set_vehicle_count(junction_id, lane, 0)
+        
+        st.session_state.simulation_active = False
+        st.success("Analytics and all traffic data cleared! ✅")
 
 # ============================================================================
 # MODE 5: MAPS VIEW (Google Maps Integration)
