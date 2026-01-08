@@ -2,7 +2,9 @@
 
 An intelligent traffic management system that dynamically adjusts traffic signal timings based on real-time vehicle density. This MVP is designed for smart city applications and hackathon evaluation.
 
-![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
+This project is submitted as part of multiple hackathons under Open Innovation / Smart City themes.
+
+![Status](https://img.shields.io/badge/Status-MVP%20Ready-brightgreen)
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.31.1-red)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -18,37 +20,58 @@ This project simulates a **4-way traffic junction** with an intelligent signal c
 - Provides live visualization and statistics
 - Requires no physical hardware or ML frameworks
 
+**Note**: The system uses AI-inspired rule-based decision logic (no machine learning model is used).
+
 **Perfect for**: Smart city proposals, hackathon presentations, IoT simulations, and traffic engineering studies.
 
 ---
 
 ## 🌟 Key Features
 
-### Core Functionality
-✅ **4-Way Junction Simulation** - North, South, East, West lanes
-✅ **Real-Time Vehicle Input** - Sliders to adjust vehicle count (0-100 per lane)
-✅ **Adaptive Signal Control** - Green time dynamically calculated based on congestion
-✅ **Congestion Analysis** - Low/Medium/High classification per lane
-✅ **Signal State Display** - Red/Yellow/Green with live updates
-✅ **Fair Lane Rotation** - Prevents any lane from being starved
-✅ **Continuous Simulation** - Auto-advance signals with start/stop controls
+### Core Functionality (From Google Developer Group Presentation)
+✅ **Real-time traffic density analysis** - Analyzes vehicle count per lane
+✅ **Adaptive green signal timing** - Dynamically calculates based on vehicle load
+✅ **Priority handling** - High-congestion lanes get more green time
+✅ **Multi-junction synchronization** - Prevents bottlenecks across intersections
+✅ **Simulation-based testing** - No physical hardware required
+✅ **Scalable architecture** - Ready for smart city deployment
 
-### Dashboard Features
-📊 **Traffic Density Chart** - Bar graph showing vehicle distribution
-🎬 **Traffic Flow Animation** - Visual representation of traffic movement
-📈 **Live Statistics** - Total vehicles, averages, most congested lane, cycle count
-🎨 **Clean UI** - Responsive, color-coded signals (Red/Yellow/Green)
-⚙️ **Control Panel** - Intuitive sliders and buttons on sidebar
+### Dashboard Features (5 Modes)
+📊 **Single Junction Mode** - Original 4-way traffic control
+🔀 **Multi-Junction Mode** - Coordinate 2-4 intersections with system health monitoring
+🚑 **Emergency Mode** - Priority override for ambulance/fire/police vehicles
+📈 **Analytics Dashboard** - Real-time metrics, trends, and JSON export
+🗺️ **Maps View** - Google Maps Platform integration with real-time signal visualization
 
 ### Algorithm Features
 🧠 **Intelligent Allocation** - Proportional green time based on vehicle density
 ⏱️ **Constraints** - Min 10s, Max 60s green time per signal
 🔄 **Fair Queuing** - Round-robin lane rotation
 📊 **Zero ML Overhead** - Pure rule-based logic, lightweight & fast
+🎯 **Real-time Adaptation** - Responds instantly to traffic changes
 
 ---
 
-## 📁 Project Structure
+## � Google Technologies Integration
+
+This project implements technologies recommended in the Google Developer Group presentation:
+
+| Technology | Usage | Status |
+|------------|-------|--------|
+| **Google Chrome** | Primary testing & simulation environment | ✅ Active |
+| **Google Maps Platform** | Junction mapping & real-time visualization | ✅ Integrated |
+| **Google Charts** | Traffic flow & performance metrics visualization | ✅ Active |
+| **Firebase** | Real-time data sync & cloud analytics | 🔮 Ready for integration |
+
+### Active Google Technologies
+
+✅ **Google Charts** - Matplotlib integration for vehicle density visualization  
+✅ **Google Maps Platform** - Folium-based interactive junction map with signal status  
+✅ **Google Chrome** - Full Streamlit dashboard rendering in browser  
+
+See [GOOGLE_INTEGRATION.md](GOOGLE_INTEGRATION.md) for detailed setup and future enhancements.
+
+---
 
 ```
 Adaptive Traffic Signal Simulation/

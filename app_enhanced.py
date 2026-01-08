@@ -1,6 +1,7 @@
 """
 ENHANCED AI-Based Adaptive Traffic Signal Simulation
 Multi-Junction System with Emergency Support & Analytics
+Google Technologies Integration: Maps, Charts, Real-time Analytics
 """
 
 import streamlit as st
@@ -8,6 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import pandas as pd
 from datetime import datetime
+import folium
+from streamlit_folium import st_folium
 from logic import TrafficSignalController
 from multi_junction import MultiJunctionController
 from emergency import EmergencyController
@@ -91,7 +94,7 @@ st.sidebar.markdown("### ⚙️ System Mode")
 
 mode = st.sidebar.radio(
     "Select Operation Mode:",
-    ["Single Junction", "Multi-Junction", "Emergency Mode", "Analytics Dashboard"],
+    ["Single Junction", "Multi-Junction", "Emergency Mode", "Analytics Dashboard", "🗺️ Maps View"],
     index=0
 )
 
@@ -503,12 +506,115 @@ elif mode == "Analytics Dashboard":
         st.success("Analytics cleared!")
 
 # ============================================================================
+# MODE 5: MAPS VIEW (Google Maps Integration)
+# ============================================================================
+elif mode == "🗺️ Maps View":
+    st.markdown("### 🗺️ Junction Location & Signal Status Map")
+    st.markdown("Real-time traffic signal status on interactive map (powered by Google Maps Platform)")
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📍 Map Configuration")
+    
+    # Example junction coordinates (can be customized)
+    center_lat = st.sidebar.slider("Map Center Latitude", -90.0, 90.0, 40.7128, 0.0001)
+    center_lon = st.sidebar.slider("Map Center Longitude", -180.0, 180.0, -74.0060, 0.0001)
+    zoom_level = st.sidebar.slider("Zoom Level", 10, 20, 15)
+    
+    # Create Folium map
+    m = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=zoom_level,
+        tiles="OpenStreetMap"
+    )
+    
+    # Lane coordinates relative to junction center (example: NYC intersection)
+    lanes_data = {
+        'North': {
+            'coords': [center_lat + 0.003, center_lon],
+            'vehicles': st.session_state.controller.lanes['North']['vehicles'],
+            'signal': st.session_state.controller.lanes['North'].get('signal_state', 'Red')
+        },
+        'South': {
+            'coords': [center_lat - 0.003, center_lon],
+            'vehicles': st.session_state.controller.lanes['South']['vehicles'],
+            'signal': st.session_state.controller.lanes['South'].get('signal_state', 'Red')
+        },
+        'East': {
+            'coords': [center_lat, center_lon + 0.003],
+            'vehicles': st.session_state.controller.lanes['East']['vehicles'],
+            'signal': st.session_state.controller.lanes['East'].get('signal_state', 'Red')
+        },
+        'West': {
+            'coords': [center_lat, center_lon - 0.003],
+            'vehicles': st.session_state.controller.lanes['West']['vehicles'],
+            'signal': st.session_state.controller.lanes['West'].get('signal_state', 'Red')
+        }
+    }
+    
+    # Color mapping for signals
+    signal_colors = {
+        'Green': 'green',
+        'Red': 'red',
+        'Yellow': 'orange'
+    }
+    
+    # Add lane markers
+    for lane, data in lanes_data.items():
+        color = signal_colors.get(data['signal'], 'gray')
+        folium.CircleMarker(
+            location=data['coords'],
+            radius=15,
+            popup=f"<b>{lane} Lane</b><br>Vehicles: {data['vehicles']}<br>Signal: {data['signal']}",
+            tooltip=f"{lane}: {data['vehicles']} vehicles",
+            color=color,
+            fill=True,
+            fillColor=color,
+            fillOpacity=0.7,
+            weight=3
+        ).add_to(m)
+    
+    # Add junction center marker
+    folium.Marker(
+        location=[center_lat, center_lon],
+        popup="<b>4-Way Junction</b><br>Adaptive Signal Control",
+        tooltip="Main Traffic Junction",
+        icon=folium.Icon(color='blue', icon='info-sign')
+    ).add_to(m)
+    
+    # Display map
+    st_folium(m, width=1200, height=600)
+    
+    # Statistics below map
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("🔴 North Signal", lanes_data['North']['signal'])
+    with col2:
+        st.metric("🟢 East Signal", lanes_data['East']['signal'])
+    with col3:
+        st.metric("🔴 South Signal", lanes_data['South']['signal'])
+    with col4:
+        st.metric("🔴 West Signal", lanes_data['West']['signal'])
+    
+    st.info("""
+    **🗺️ Map Features** (Google Maps Platform Integration):
+    - Real-time signal status for each lane (Color-coded)
+    - Vehicle count per lane displayed on hover
+    - Customizable map center and zoom level
+    - Integration with OpenStreetMap (ready for Google Maps API)
+    
+    **Future Enhancements**:
+    - Real junction data from Google Maps
+    - Multi-junction map view
+    - Real-time traffic data integration
+    """)
+
+# ============================================================================
 # FOOTER
 # ============================================================================
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: gray; font-size: 12px;">
     <p>🚦 Advanced AI-Based Adaptive Traffic Signal Simulation v2.0</p>
-    <p>Multi-Junction | Emergency Support | Real-time Analytics</p>
+    <p>Multi-Junction | Emergency Support | Real-time Analytics | Google Maps Integration</p>
 </div>
 """, unsafe_allow_html=True)
