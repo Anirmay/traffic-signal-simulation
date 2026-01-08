@@ -101,9 +101,15 @@ with col2:
         st.session_state.simulation_active = False
 
 if st.sidebar.button("🔄 Reset", key="reset_btn", use_container_width=True):
+    # Reset controller
     controller.reset()
     st.session_state.simulation_active = False
     st.session_state.update_counter = 0
+    
+    # Reset slider values in session state
+    for lane in ['North', 'South', 'East', 'West']:
+        st.session_state[f"slider_{lane}"] = 0
+    
     st.rerun()
 
 # ============================================================================

@@ -140,6 +140,9 @@ if mode == "Single Junction":
     if st.sidebar.button("🔄 Reset", key="reset_btn", use_container_width=True):
         multi_controller.reset_all()
         st.session_state.simulation_active = False
+        # Reset slider values
+        for lane in ['North', 'South', 'East', 'West']:
+            st.session_state[f"slider_{lane}"] = 0
         st.rerun()
     
     # Display current junction
@@ -298,6 +301,10 @@ elif mode == "Multi-Junction":
     
     if st.sidebar.button("🔄 Reset All", key="reset_multi", use_container_width=True):
         multi_controller.reset_all()
+        # Reset all slider values for all junctions
+        for j in range(multi_controller.num_junctions):
+            for lane in ['North', 'South', 'East', 'West']:
+                st.session_state[f"slider_j{j}_{lane}"] = 0
         st.rerun()
     
     # Display all junctions
