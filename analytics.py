@@ -227,7 +227,10 @@ class TrafficAnalytics:
         }
     
     def clear_logs(self):
-        """Clear all logged data."""
+        """Clear all logged data and reset all counters."""
         self.traffic_logs = []
         self.hourly_stats = defaultdict(lambda: defaultdict(list))
+        self.peak_hours = []
+        self.average_wait_times = {}
+        self.system_efficiency_history = []
         self.total_vehicles_processed = 0
