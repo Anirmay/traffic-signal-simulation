@@ -532,25 +532,29 @@ elif mode == "🗺️ Maps View":
     
     # Lane coordinates relative to junction center (example: NYC intersection)
     lanes_data = {
+    # Use default multi-controller for Maps View
+    controller = multi_controller.junctions[0]['controller']
+    
+    lanes_data = {
         'North': {
             'coords': [center_lat + 0.003, center_lon],
-            'vehicles': st.session_state.controller.lanes['North']['vehicles'],
-            'signal': st.session_state.controller.lanes['North'].get('signal_state', 'Red')
+            'vehicles': controller.lanes['North']['vehicles'],
+            'signal': controller.lanes['North'].get('signal_state', 'Red')
         },
         'South': {
             'coords': [center_lat - 0.003, center_lon],
-            'vehicles': st.session_state.controller.lanes['South']['vehicles'],
-            'signal': st.session_state.controller.lanes['South'].get('signal_state', 'Red')
+            'vehicles': controller.lanes['South']['vehicles'],
+            'signal': controller.lanes['South'].get('signal_state', 'Red')
         },
         'East': {
             'coords': [center_lat, center_lon + 0.003],
-            'vehicles': st.session_state.controller.lanes['East']['vehicles'],
-            'signal': st.session_state.controller.lanes['East'].get('signal_state', 'Red')
+            'vehicles': controller.lanes['East']['vehicles'],
+            'signal': controller.lanes['East'].get('signal_state', 'Red')
         },
         'West': {
             'coords': [center_lat, center_lon - 0.003],
-            'vehicles': st.session_state.controller.lanes['West']['vehicles'],
-            'signal': st.session_state.controller.lanes['West'].get('signal_state', 'Red')
+            'vehicles': controller.lanes['West']['vehicles'],
+            'signal': controller.lanes['West'].get('signal_state', 'Red')
         }
     }
     
