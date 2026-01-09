@@ -8,6 +8,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import pandas as pd
+import numpy as np
 from datetime import datetime
 import folium
 from streamlit_folium import st_folium
@@ -15,6 +16,7 @@ from logic import TrafficSignalController
 from multi_junction import MultiJunctionController
 from emergency import EmergencyController
 from analytics import TrafficAnalytics
+from prediction import TrafficPredictor, SmartTrafficOptimizer
 
 # ============================================================================
 # PAGE CONFIGURATION
@@ -94,7 +96,7 @@ st.sidebar.markdown("### ⚙️ System Mode")
 
 mode = st.sidebar.radio(
     "Select Operation Mode:",
-    ["Single Junction", "Multi-Junction", "Emergency Mode", "Analytics Dashboard", "🗺️ Maps View"],
+    ["Single Junction", "Multi-Junction", "Emergency Mode", "Analytics Dashboard", "� Predictive Analytics", "�🗺️ Maps View"],
     index=0
 )
 
@@ -517,7 +519,217 @@ elif mode == "Analytics Dashboard":
         st.success("Analytics and all traffic data cleared! ✅")
 
 # ============================================================================
-# MODE 5: MAPS VIEW (Google Maps Integration)
+# MODE 5: PREDICTIVE ANALYTICS (ML-Based Traffic Forecasting)
+# ============================================================================
+elif mode == "🔮 Predictive Analytics":
+    st.markdown("### 🔮 ML-Based Traffic Prediction & Forecasting")
+    st.markdown("Advanced predictive analytics using machine learning to forecast traffic patterns")
+    
+    # Initialize predictor in session state
+    if 'predictor' not in st.session_state:
+        st.session_state.predictor = TrafficPredictor()
+        st.session_state.optimizer = SmartTrafficOptimizer(st.session_state.predictor)
+    
+    # Add sample data if empty (for demo)
+    predictor = st.session_state.predictor
+    if len(predictor.historical_data) < 20:
+        # Add simulated historical data for demonstration
+        from datetime import timedelta
+        for hour in range(24):
+            for day in range(7):
+                for lane, base_vehicles in [('North', 45), ('East', 35), ('South', 40), ('West', 30)]:
+                    # Create traffic pattern: peaks at rush hours
+                    if hour in [8, 9, 17, 18]:
+                        vehicles = base_vehicles + 30 + np.random.randint(-10, 10)
+                    elif hour in [10, 11, 14, 15, 16]:
+                        vehicles = base_vehicles + 15
+                    else:
+                        vehicles = base_vehicles + np.random.randint(-5, 5)
+                    
+                    timestamp = datetime(2026, 1, 9, hour, 0) - timedelta(days=day)
+                    predictor.add_historical_data(timestamp, lane, max(5, vehicles))
+    
+    # Display predictions
+    col1, col2, col3, col4 = st.columns(4)
+    
+    lanes = ['North', 'East', 'South', 'West']
+    predictions_dict = {}
+    
+    for lane in lanes:
+        predictions_dict[lane] = predictor.predict_next_hours(lane, hours_ahead=4)
+    
+    # Peak hour predictions
+    peak_info = predictor.get_peak_hours_prediction()
+    
+    with col1:
+        st.metric("🚗 Current Trend", peak_info['current_trend'].upper(), 
+                 f"{peak_info['current_vehicles']} vehicles")
+    
+    with col2:
+        st.metric("📊 Avg Vehicles/Hour", peak_info['avg_vehicles'])
+    
+    with col3:
+        st.metric("⏰ Morning Peak", f"{peak_info['morning_peak'][0]}:00-{peak_info['morning_peak'][1]}:00")
+    
+    with col4:
+        st.metric("⏰ Evening Peak", f"{peak_info['afternoon_peak'][0]}:00-{peak_info['afternoon_peak'][1]}:00")
+    
+    st.markdown("---")
+    
+    # Prediction details for each lane
+    st.markdown("### 📈 Next 4 Hours Traffic Forecast")
+    
+    pred_cols = st.columns(4)
+    
+    for idx, lane in enumerate(lanes):
+        with pred_cols[idx]:
+            st.markdown(f"**{lane} Lane**")
+            predictions = predictions_dict[lane]
+            
+            for pred in predictions:
+                hour_str = f"{pred['hour']:02d}:00"
+                vehicles = pred['predicted_vehicles']
+                confidence = pred['confidence']
+                lower = pred['lower_bound']
+                upper = pred['upper_bound']
+                
+                # Color code based on congestion
+                if vehicles > 60:
+                    color = "🔴"
+                    severity = "High"
+                elif vehicles > 40:
+                    color = "🟡"
+                    severity = "Medium"
+                else:
+                    color = "🟢"
+                    severity = "Low"
+                
+                st.markdown(f"""
+                **{hour_str}** {color}
+                - Predicted: {vehicles} vehicles
+                - Range: {lower}-{upper}
+                - Confidence: {confidence*100:.0f}%
+                - Risk: {severity}
+                """)
+    
+    st.markdown("---")
+    
+    # Congestion forecast
+    st.markdown("### ⚠️ Congestion Risk Analysis (Next 4 Hours)")
+    
+    congestion_forecast = predictor.get_congestion_forecast(lanes, threshold=50)
+    
+    risk_cols = st.columns(4)
+    for idx, lane in enumerate(lanes):
+        with risk_cols[idx]:
+            forecast = congestion_forecast[lane]
+            risk_pct = forecast['congestion_risk']
+            
+            if risk_pct > 50:
+                risk_level = "🔴 HIGH"
+                color = "#ff4444"
+            elif risk_pct > 25:
+                risk_level = "🟡 MEDIUM"
+                color = "#ffaa44"
+            else:
+                risk_level = "🟢 LOW"
+                color = "#44ff44"
+            
+            st.markdown(f"""
+            <div style="background-color: {color}20; padding: 15px; border-radius: 8px; border-left: 4px solid {color};">
+            <b>{lane} Lane</b><br>
+            Congestion Risk: <b>{risk_pct}%</b> {risk_level}<br>
+            Max Expected: {forecast['max_expected']} vehicles<br>
+            Avg Expected: {forecast['avg_expected']} vehicles
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Recommended signal timing
+    st.markdown("### 🎯 Recommended Signal Timing (Based on Predictions)")
+    
+    timing_cols = st.columns(4)
+    optimizer = st.session_state.optimizer
+    
+    for idx, lane in enumerate(lanes):
+        with timing_cols[idx]:
+            predictions = predictions_dict[lane]
+            if predictions:
+                recommended_green = optimizer.get_recommended_timing(lane, predictions)
+                current_pred = predictions[0]['predicted_vehicles']
+                
+                st.info(f"""
+                **{lane} Lane**
+                
+                Next Hour Prediction: {current_pred} vehicles
+                
+                **Recommended Green Time:**
+                ### {recommended_green}s
+                
+                (Current optimal: {recommended_green}s / Max: 60s)
+                """)
+    
+    st.markdown("---")
+    
+    # Optimization recommendations
+    st.markdown("### 💡 AI Optimization Recommendations")
+    
+    recommendations = optimizer.get_optimization_recommendations({})
+    
+    if recommendations:
+        for i, rec in enumerate(recommendations, 1):
+            st.success(f"{i}. {rec}")
+    else:
+        st.info("✅ System is operating optimally. No adjustments needed.")
+    
+    st.markdown("---")
+    
+    # Visualization: Traffic forecast chart
+    st.markdown("### 📊 Traffic Forecast Chart")
+    
+    fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+    fig.patch.set_facecolor('#111111')
+    
+    for idx, (ax, lane) in enumerate(zip(axes.flat, lanes)):
+        predictions = predictions_dict[lane]
+        hours = [p['hour'] for p in predictions]
+        predicted = [p['predicted_vehicles'] for p in predictions]
+        lower = [p['lower_bound'] for p in predictions]
+        upper = [p['upper_bound'] for p in predictions]
+        
+        ax.plot(hours, predicted, marker='o', color='#00ff88', linewidth=2.5, label='Prediction')
+        ax.fill_between(hours, lower, upper, alpha=0.3, color='#00ff88', label='Confidence Interval')
+        ax.axhline(y=50, color='#ff4444', linestyle='--', alpha=0.7, label='Congestion Threshold')
+        
+        ax.set_title(f'{lane} Lane - 4 Hour Forecast', color='white', fontsize=11, fontweight='bold')
+        ax.set_xlabel('Hour', color='white')
+        ax.set_ylabel('Predicted Vehicles', color='white')
+        ax.grid(True, alpha=0.3, color='white')
+        ax.legend(loc='upper left', fontsize=8)
+        
+        # Set axis colors
+        ax.tick_params(colors='white')
+        for spine in ax.spines.values():
+            spine.set_color('white')
+        ax.set_facecolor('#222222')
+    
+    plt.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.markdown("""
+    **About Predictive Analytics Mode:**
+    - Uses historical traffic data to forecast patterns
+    - Implements multiple prediction algorithms (Simple, ARIMA, Random Forest ML)
+    - Provides confidence intervals for all predictions
+    - Recommends optimal signal timing based on forecasts
+    - Identifies congestion risk and peak hours
+    - Helps optimize traffic flow proactively
+    """)
+
+# ============================================================================
+# MODE 6: MAPS VIEW (Google Maps Integration)
 # ============================================================================
 elif mode == "🗺️ Maps View":
     st.markdown("### 🗺️ Junction Location & Signal Status Map")
