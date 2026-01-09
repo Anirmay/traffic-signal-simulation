@@ -36,11 +36,12 @@ This project simulates a **4-way traffic junction** with an intelligent signal c
 ✅ **Simulation-based testing** - No physical hardware required
 ✅ **Scalable architecture** - Ready for smart city deployment
 
-### Dashboard Features (5 Modes)
+### Dashboard Features (6 Modes)
 📊 **Single Junction Mode** - Original 4-way traffic control
 🔀 **Multi-Junction Mode** - Coordinate 2-4 intersections with system health monitoring
 🚑 **Emergency Mode** - Priority override for ambulance/fire/police vehicles
 📈 **Analytics Dashboard** - Real-time metrics, trends, and JSON export
+🔮 **Predictive Analytics** - ML-based traffic forecasting (NEW!)
 🗺️ **Maps View** - Google Maps Platform integration with real-time signal visualization
 
 ### Algorithm Features
@@ -401,13 +402,56 @@ python --version  # Should be 3.8+
 
 ## 🎯 Future Enhancements (Optional)
 
-- 🚗 Multi-intersection coordination
+- ✅ **Multi-intersection coordination** - COMPLETED ✨
+- ✅ **Emergency vehicle priority** - COMPLETED ✨
+- ✅ **Historical analytics & data logging** - COMPLETED ✨
+- ✅ **Google Maps integration** - COMPLETED ✨
+- ✅ **ML-based traffic prediction** - COMPLETED ✨ (NEW)
+- ✅ **Firebase cloud integration** - COMPLETED ✨ (NEW)
+- ✅ **Computer vision vehicle detection** - COMPLETED ✨ (NEW)
 - 📍 GPS-based vehicle tracking simulation
-- 🤖 Machine learning model integration
-- 🔔 Alert system for emergency vehicles
-- 📊 Historical data logging and analytics
-- 🗺️ Map-based visualization with Folium
+- 🔔 Real-time alert system for congestion
 - 🔊 Audio notifications for signal changes
+
+---
+
+## 🔮 Advanced Features (New in v2.0!)
+
+### 1. Predictive Analytics Mode
+**File**: `prediction.py` | **Dashboard**: Mode 5 - "🔮 Predictive Analytics"
+
+Uses machine learning to forecast traffic patterns 1-4 hours ahead:
+- ✨ **3 Prediction Algorithms**: Simple averaging, ARIMA, Random Forest ML
+- 📊 **Confidence Intervals**: All predictions include uncertainty bounds
+- ⏰ **Peak Hour Forecasting**: Identifies morning and evening peaks
+- ⚠️ **Congestion Risk Analysis**: Predicts high-traffic periods
+- 🎯 **Signal Optimization**: Recommends optimal green times based on predictions
+
+**See**: [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md#1--predictive-analytics-module) for details
+
+### 2. Firebase Cloud Integration
+**File**: `firebase_integration.py`
+
+Real-time cloud sync for distributed traffic management:
+- ☁️ **Real-time Data Sync**: Push/pull traffic data from cloud
+- 📡 **Offline-First**: Automatic caching and sync recovery
+- 🔐 **Authentication**: Secure user and admin access
+- 📈 **Analytics Logging**: Event tracking and performance metrics
+- 🌍 **Multi-City Coordination**: Sync across multiple junctions citywide
+
+**See**: [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md#2--firebase-integration-module) for setup
+
+### 3. Computer Vision Module
+**File**: `computer_vision.py`
+
+Automatic vehicle detection from live camera feeds:
+- 👁️ **Multiple Detection Methods**: Haar Cascade, YOLOv5, SSD, Color-based
+- 🎥 **Live Camera Support**: Integrate webcam or IP cameras
+- 📹 **Video Analysis**: Batch process traffic videos
+- 🚗 **Lane Tracking**: Automatic vehicle counting per lane
+- 📊 **Flow Analysis**: Detect congestion patterns
+
+**See**: [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md#3--computer-vision-module) for usage
 
 ---
 
@@ -446,6 +490,6 @@ For questions, issues, or suggestions:
 
 ---
 
-*Last Updated: January 8, 2026*
-*Version: 1.0 MVP*
+*Last Updated: January 9, 2026*
+*Version: 2.0 Enterprise (ML + Cloud + CV)*
 # Updated
