@@ -440,6 +440,31 @@ elif mode == "Multi-Junction":
                     </div>
                     """, unsafe_allow_html=True)
     
+    # SIMULATION LOOP FOR MULTI-JUNCTION
+    if st.session_state.simulation_active:
+        status_placeholder = st.empty()
+        progress_placeholder = st.empty()
+        
+        for i in range(5):
+            if st.session_state.simulation_active:
+                progress_placeholder.progress((i + 1) / 5)
+                
+                with status_placeholder.container():
+                    st.info(f"""
+                    **Simulation Active** | Coordinated Mode | 
+                    Total Vehicles: {multi_controller.get_system_health()['total_vehicles']}
+                    """)
+                
+                import time
+                time.sleep(3)
+                
+                # Advance ALL junctions
+                for junc_id in range(multi_controller.num_junctions):
+                    multi_controller.advance_signal(junc_id)
+                    sync_junction_to_firebase(junc_id)  # Auto-sync each junction
+                
+                st.rerun()
+    
     # Recommendations
     st.markdown("---")
     st.markdown("### 💡 Optimization Recommendations")
