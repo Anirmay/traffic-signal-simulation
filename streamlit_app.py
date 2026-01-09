@@ -508,7 +508,7 @@ elif mode == "Analytics Dashboard":
             mime="application/json"
         )
     
-    if st.button("🔄 Clear Analytics"):
+    if st.button("Clear Analytics"):
         # Clear all analytics logs
         analytics.clear_logs()
         
@@ -518,7 +518,8 @@ elif mode == "Analytics Dashboard":
                 multi_controller.set_vehicle_count(junction_id, lane, 0)
         
         st.session_state.simulation_active = False
-        st.success("Analytics and all traffic data cleared! ✅")
+        st.success("Analytics cleared!")
+        st.rerun()
 
 # ============================================================================
 # MODE 5: PREDICTIVE ANALYTICS (ML-Based Traffic Forecasting)
