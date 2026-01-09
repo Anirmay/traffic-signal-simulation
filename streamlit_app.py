@@ -737,6 +737,33 @@ elif mode == "Cloud Sync":
     with col2:
         st.markdown("#### Status")
         if cloud_enabled:
+            # Initialize Firebase connection
+            firebase_db = None
+            try:
+                from firebase_integration import FirebaseRealtimeDB, FirebaseConfig
+                import os
+                
+                if os.path.exists('firebase-config.json'):
+                    config = FirebaseConfig()
+                    if config.load_from_json('firebase-config.json'):
+                        firebase_db = FirebaseRealtimeDB(config)
+                        
+                        # PUSH REAL DATA to Firebase
+                        for junc_id in range(multi_controller.num_junctions):
+                            controller = multi_controller.junctions[junc_id]['controller']
+                            stats = controller.get_statistics()
+                            
+                            firebase_db.push_traffic_data(
+                                junction_id=f"junction_{junc_id}",
+                                lane="combined",
+                                vehicle_count=stats['total_vehicles'],
+                                signal_state=f"Green: {stats.get('current_green_lane', 'UNKNOWN')}",
+                                timestamp=datetime.now()
+                            )
+            except Exception as e:
+                print(f"Firebase init error: {e}")
+                firebase_db = None
+            
             # Collect REAL data from all junctions
             total_vehicles = 0
             total_records = 0
@@ -744,7 +771,6 @@ elif mode == "Cloud Sync":
             
             for junc_id in range(multi_controller.num_junctions):
                 controller = multi_controller.junctions[junc_id]['controller']
-                signal_state = controller.get_signal_state()
                 stats = controller.get_statistics()
                 
                 # Count vehicles and create records
@@ -767,7 +793,8 @@ elif mode == "Cloud Sync":
             st.session_state.junctions_data = all_junctions_data
             
             # Display status
-            st.success("✅ Cloud Sync: CONNECTED & SYNCING REAL-TIME DATA")
+            firebase_status = "✅ CONNECTED & PUSHING TO FIREBASE" if firebase_db else "⚠️ LOCAL SYNC ONLY"
+            st.success(f"Cloud Sync: {firebase_status}")
             st.metric("Last Sync", "Just now")
             st.metric("Synced Records", f"{st.session_state.synced_data_count:,}")
             st.metric("Cloud Storage", f"{st.session_state.cloud_storage_mb} MB")
