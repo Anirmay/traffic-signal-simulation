@@ -98,6 +98,58 @@ historical_manager = st.session_state.historical_manager
 predictive_analyzer = st.session_state.predictive_analyzer
 
 # ============================================================================
+# AUTO-SYNC TO FIREBASE FUNCTION
+# ============================================================================
+def sync_junction_to_firebase(junction_id):
+    """Auto-sync junction state to Firebase - stores ALL changes as history"""
+    try:
+        import requests
+        with open('firebase-config.json', 'r') as f:
+            config = json.load(f)
+        
+        db_url = config.get('databaseURL', '').rstrip('/')
+        
+        # Skip if invalid config
+        if 'test_key_placeholder' in str(config.get('apiKey', '')):
+            return False
+        
+        controller = multi_controller.junctions[junction_id]['controller']
+        stats = controller.get_statistics()
+        signal_state = controller.get_signal_state()
+        
+        # Prepare detailed data
+        data = {
+            'junction_id': f"junction_{junction_id}",
+            'timestamp': datetime.now().isoformat(),
+            'total_vehicles': stats['total_vehicles'],
+            'signal_state': {
+                lane: signal_state[lane]['signal'] 
+                for lane in signal_state
+            },
+            'vehicles_per_lane': {
+                lane: signal_state[lane]['vehicles']
+                for lane in signal_state
+            },
+            'green_lane': stats.get('current_green_lane', 'UNKNOWN'),
+            'most_congested': stats.get('most_congested_lane', 'NONE'),
+            'efficiency': stats.get('efficiency', 0),
+            'cycle': stats.get('cycle_number', 0)
+        }
+        
+        # 1. STORE AS HISTORICAL DATA (preserves all changes)
+        timestamp_key = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:19]
+        history_url = f"{db_url}/history/junction_{junction_id}/{timestamp_key}.json"
+        requests.put(history_url, json=data, timeout=5)
+        
+        # 2. UPDATE CURRENT STATE (easy access)
+        current_url = f"{db_url}/live/junction_{junction_id}.json"
+        response = requests.put(current_url, json=data, timeout=5)
+        
+        return response.status_code in [200, 201]
+    except Exception as e:
+        return False
+
+# ============================================================================
 # HEADER
 # ============================================================================
 col1, col2 = st.columns([1, 4])
@@ -244,6 +296,7 @@ if mode == "Single Junction":
     if st.session_state.simulation_active:
         status_placeholder = st.empty()
         progress_placeholder = st.empty()
+        sync_status = st.empty()
         
         for i in range(5):
             if st.session_state.simulation_active:
@@ -254,6 +307,14 @@ if mode == "Single Junction":
                     **Simulation Active** | Cycle: {controller.get_statistics()['cycle_number']} | 
                     Green Lane: {controller.get_statistics()['current_green_lane']}
                     """)
+                
+                # AUTO-SYNC TO FIREBASE
+                sync_success = sync_junction_to_firebase(junction_id)
+                with sync_status.container():
+                    if sync_success:
+                        st.success("🔄 Synced to Firebase ✓")
+                    else:
+                        st.info("💾 Running locally (Firebase optional)")
                 
                 import time
                 time.sleep(3)
