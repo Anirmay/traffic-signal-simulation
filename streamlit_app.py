@@ -526,7 +526,18 @@ elif mode == "🔮 Predictive Analytics":
     st.markdown("### 🔮 Predictive Analytics - AI-Based Traffic Forecasting")
     st.markdown("Machine Learning models predict future traffic patterns and congestion")
     
-    st.sidebar.markdown("---")
+    # Show default info first
+    st.info("""
+    🔮 **Predictive Analytics Module**
+    
+    This module uses machine learning to forecast:
+    - Future traffic congestion patterns
+    - Peak hour predictions
+    - Lane-specific vehicle forecasts
+    - Congestion probability
+    """)
+    
+    st.markdown("---")
     st.sidebar.markdown("### 🎯 Prediction Settings")
     
     junction_id = st.sidebar.selectbox("Select Junction:", range(multi_controller.num_junctions), key="pred_junction")
@@ -542,12 +553,13 @@ elif mode == "🔮 Predictive Analytics":
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📊 Generate Predictions"):
+        if st.button("📊 Generate Predictions", key="gen_pred_btn"):
             st.session_state.show_predictions = True
     with col2:
-        if st.button("🔄 Clear Predictions"):
+        if st.button("🔄 Clear Predictions", key="clear_pred_btn"):
             st.session_state.show_predictions = False
             traffic_predictor.historical_data.clear()
+            st.rerun()
             st.success("Predictions cleared!")
     
     # Display predictions
@@ -690,33 +702,37 @@ elif mode == "🗺️ Maps View":
     
     # Use default multi-controller for Maps View
     controller = multi_controller.junctions[0]['controller']
+    signal_state = controller.get_signal_state()
     
     # Lane coordinates relative to junction center (example: NYC intersection)
     lanes_data = {
         'North': {
             'coords': [center_lat + 0.003, center_lon],
-            'vehicles': controller.lanes['North']['vehicles'],
-            'signal': controller.lanes['North'].get('signal_state', 'Red')
+            'vehicles': signal_state['North']['vehicles'],
+            'signal': signal_state['North']['signal']
         },
         'South': {
             'coords': [center_lat - 0.003, center_lon],
-            'vehicles': controller.lanes['South']['vehicles'],
-            'signal': controller.lanes['South'].get('signal_state', 'Red')
+            'vehicles': signal_state['South']['vehicles'],
+            'signal': signal_state['South']['signal']
         },
         'East': {
             'coords': [center_lat, center_lon + 0.003],
-            'vehicles': controller.lanes['East']['vehicles'],
-            'signal': controller.lanes['East'].get('signal_state', 'Red')
+            'vehicles': signal_state['East']['vehicles'],
+            'signal': signal_state['East']['signal']
         },
         'West': {
             'coords': [center_lat, center_lon - 0.003],
-            'vehicles': controller.lanes['West']['vehicles'],
-            'signal': controller.lanes['West'].get('signal_state', 'Red')
+            'vehicles': signal_state['West']['vehicles'],
+            'signal': signal_state['West']['signal']
         }
     }
     
     # Color mapping for signals
     signal_colors = {
+        'GREEN': 'green',
+        'RED': 'red',
+        'YELLOW': 'orange',
         'Green': 'green',
         'Red': 'red',
         'Yellow': 'orange'
