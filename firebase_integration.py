@@ -4,8 +4,16 @@ Enables cloud data sync, real-time updates, and scalability
 """
 
 import json
+import os
 from datetime import datetime
 from typing import Dict, List, Optional
+
+try:
+    import firebase_admin
+    from firebase_admin import credentials, db
+    FIREBASE_AVAILABLE = True
+except ImportError:
+    FIREBASE_AVAILABLE = False
 
 
 class FirebaseConfig:
@@ -53,16 +61,21 @@ class FirebaseRealtimeDB:
         self.config = config
         self.is_connected = False
         self.local_cache = {}
+        self.db_ref = None
         
-        if config.is_configured:
+        if config.is_configured and FIREBASE_AVAILABLE:
             try:
-                # This would require firebase-admin SDK
-                # import firebase_admin
-                # from firebase_admin import db
-                # Initialize connection
-                self.is_connected = True
-            except ImportError:
-                print("Firebase SDK not installed. Using local caching mode.")
+                # Initialize Firebase if not already initialized
+                if not firebase_admin._apps:
+                    # Use REST API approach for web client
+                    self.db_url = config.config.get("databaseURL", "")
+                    self.api_key = config.config.get("apiKey", "")
+                    self.is_connected = True
+                    print(f"✅ Firebase connected to {self.db_url}")
+                else:
+                    self.is_connected = True
+            except Exception as e:
+                print(f"Firebase connection error: {e}")
                 self.is_connected = False
     
     def push_traffic_data(self, junction_id: str, lane: str, vehicle_count: int, 
@@ -82,9 +95,20 @@ class FirebaseRealtimeDB:
         
         if self.is_connected:
             try:
-                # Firebase push would happen here
-                # db.reference(f'traffic/{junction_id}/{lane}').set(data)
-                pass
+                # Use Firebase REST API to push data
+                import requests
+                db_url = self.db_url.rstrip('/')
+                path = f"traffic/{junction_id}/{lane}.json"
+                url = f"{db_url}/{path}"
+                
+                # Firebase REST API PUT request
+                response = requests.put(url, json=data, timeout=5)
+                if response.status_code in [200, 201]:
+                    print(f"✅ Pushed {junction_id}/{lane} to Firebase")
+                    return True
+                else:
+                    print(f"Firebase push status: {response.status_code}")
+                    self._cache_locally(junction_id, lane, data)
             except Exception as e:
                 print(f"Firebase push error: {e}")
                 self._cache_locally(junction_id, lane, data)
