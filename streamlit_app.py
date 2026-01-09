@@ -418,18 +418,27 @@ elif mode == "Multi-Junction":
             st.metric("Cycle", junc_state['statistics']['cycle_number'])
         
         with col2:
-            # Mini signal display
+            # Mini signal display with colors
             signal_state = junc_state['signal_state']
             mini_cols = st.columns(4)
             
+            # Color mapping
+            color_mapping = {'RED': '#ff6b6b', 'GREEN': '#51cf66', 'YELLOW': '#ffd43b'}
+            signal_emoji = {'RED': '🔴', 'GREEN': '🟢', 'YELLOW': '🟡'}
+            
             for idx, (lane, state) in enumerate(signal_state.items()):
                 with mini_cols[idx]:
-                    signal_emoji = {'RED': '🔴', 'GREEN': '🟢', 'YELLOW': '🟡'}[state['signal']]
+                    signal_color = color_mapping[state['signal']]
+                    signal_icon = signal_emoji[state['signal']]
+                    
                     st.markdown(f"""
-                    **{signal_emoji} {lane}**
-                    {state['vehicles']} vehicles
-                    {state['green_time']}s green
-                    """)
+                    <div style="background-color: {signal_color}; padding: 15px; border-radius: 8px; 
+                                text-align: center; color: white; margin: 5px 0;">
+                        <h4 style="margin: 0; color: white;">{signal_icon} {lane}</h4>
+                        <p style="margin: 3px 0; font-size: 12px;">{state['vehicles']} vehicles</p>
+                        <p style="margin: 3px 0; font-size: 11px;">{state['green_time']}s green</p>
+                    </div>
+                    """, unsafe_allow_html=True)
     
     # Recommendations
     st.markdown("---")
