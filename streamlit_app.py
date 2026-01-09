@@ -9,14 +9,17 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import folium
 from streamlit_folium import st_folium
+from pathlib import Path
 from logic import TrafficSignalController
 from multi_junction import MultiJunctionController
 from emergency import EmergencyController
 from analytics import TrafficAnalytics
 from prediction import TrafficPredictor
+from historical_data import HistoricalDataManager, PredictiveTrafficAnalyzer
+import json
 
 # ============================================================================
 # PAGE CONFIGURATION
@@ -67,6 +70,21 @@ if 'multi_controller' not in st.session_state:
     st.session_state.update_counter = 0
     st.session_state.selected_mode = 'single'  # 'single' or 'multi'
     
+    # Initialize historical data manager
+    try:
+        with open('firebase-config.json', 'r') as f:
+            firebase_config = json.load(f)
+        st.session_state.historical_manager = HistoricalDataManager(
+            local_dir='traffic_data',
+            firebase_config=firebase_config
+        )
+    except:
+        st.session_state.historical_manager = HistoricalDataManager(local_dir='traffic_data')
+    
+    st.session_state.predictive_analyzer = PredictiveTrafficAnalyzer(
+        st.session_state.historical_manager
+    )
+    
     # Initialize emergency controllers for each junction
     for junc_id in range(2):
         controller = st.session_state.multi_controller.junctions[junc_id]['controller']
@@ -76,6 +94,8 @@ multi_controller = st.session_state.multi_controller
 emergency_controllers = st.session_state.emergency_controllers
 analytics = st.session_state.analytics
 traffic_predictor = st.session_state.traffic_predictor
+historical_manager = st.session_state.historical_manager
+predictive_analyzer = st.session_state.predictive_analyzer
 
 # ============================================================================
 # HEADER
@@ -98,7 +118,7 @@ st.sidebar.markdown("### ⚙️ System Mode")
 
 mode = st.sidebar.radio(
     "Select Operation Mode:",
-    ["Single Junction", "Multi-Junction", "Emergency Mode", "Analytics Dashboard", "Predictive Analytics", "Maps View", "Cloud Sync", "Computer Vision"],
+    ["Single Junction", "Multi-Junction", "Emergency Mode", "Analytics Dashboard", "Historical Data", "Predictive Analytics", "Maps View", "Cloud Sync", "Computer Vision"],
     index=0
 )
 
@@ -522,6 +542,328 @@ elif mode == "Analytics Dashboard":
         st.rerun()
 
 # ============================================================================
+# MODE 4.5: HISTORICAL DATA MANAGEMENT & STORAGE
+# ============================================================================
+elif mode == "Historical Data":
+    st.markdown("## 📚 Historical Traffic Data & Storage")
+    st.markdown("Store, analyze, and learn from past traffic patterns for predictive control")
+    
+    # Tabs for different views
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📊 Data Storage", 
+        "📈 Historical Analysis", 
+        "🔮 Predictions", 
+        "⚠️ Anomalies",
+        "📥 Export"
+    ])
+    
+    # ========== TAB 1: DATA STORAGE ==========
+    with tab1:
+        st.subheader("💾 Traffic Data Storage System")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.info("""
+            **Storage Features:**
+            - 📁 Local file storage (traffic_data/)
+            - ☁️ Cloud sync to Firebase
+            - 📅 Date-based organization
+            - 🔄 Automatic snapshots
+            """)
+        
+        with col2:
+            st.success("""
+            **Data Captured:**
+            - ⏱️ Timestamp & signal states
+            - 🚗 Vehicle counts per lane
+            - 🚦 Traffic signal timing
+            - 📊 Congestion levels
+            - 🔄 System cycles
+            """)
+        
+        st.markdown("---")
+        st.subheader("📸 Manual Data Snapshot")
+        
+        if st.button("💾 Save Current Traffic State to History"):
+            try:
+                all_saved = True
+                saved_count = 0
+                
+                # Get all junction states
+                all_states = multi_controller.get_all_junctions_state()
+                
+                if not all_states:
+                    st.warning("⚠️ No junction data available. Run a simulation first!")
+                else:
+                    # Save each junction's data
+                    for junc_id in range(len(all_states)):
+                        junc_state = all_states[junc_id]
+                        
+                        # Construct snapshot with all required fields
+                        snapshot_data = {
+                            'timestamp': datetime.now().isoformat(),
+                            'junction_id': junc_id,
+                            'signal_state': junc_state.get('signal_state', {}),
+                            'statistics': junc_state.get('statistics', {'total_vehicles': 0}),
+                            'congestion_level': min(100, junc_state.get('statistics', {}).get('total_vehicles', 0) * 1.5)
+                        }
+                        
+                        # Try to save
+                        try:
+                            success = historical_manager.save_snapshot(snapshot_data)
+                            if success:
+                                saved_count += 1
+                            else:
+                                all_saved = False
+                        except Exception as e:
+                            st.error(f"Error saving Junction {junc_id}: {str(e)}")
+                            all_saved = False
+                    
+                    if all_saved and saved_count > 0:
+                        st.success(f"✅ Successfully saved {saved_count} junction(s) to history!")
+                        st.info("Go to 'Historical Analysis' tab to see your stored data")
+                    elif saved_count > 0:
+                        st.warning(f"⚠️ Saved {saved_count} junction(s), but some failed")
+                    else:
+                        st.error("❌ Failed to save any junctions. Check the system logs.")
+                        
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+                st.info("Tip: Make sure you're running a simulation in 'Single Junction' or 'Multi-Junction' mode first")
+        
+        st.markdown("---")
+        st.subheader("📊 Storage Statistics")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        # Count stored files
+        traffic_data_path = Path('traffic_data')
+        if traffic_data_path.exists():
+            total_files = len(list(traffic_data_path.glob('**/data.jsonl')))
+            total_dirs = len(list(traffic_data_path.glob('**/junction_*')))
+            
+            with col1:
+                st.metric("Total Records", total_files, "snapshots")
+            with col2:
+                st.metric("Junction Days", total_dirs, "days")
+            with col3:
+                st.metric("Storage Path", "traffic_data/")
+        
+        # Data retention settings
+        st.markdown("---")
+        st.subheader("🗑️ Data Management")
+        
+        retention_days = st.slider(
+            "Keep historical data for (days):",
+            min_value=7,
+            max_value=365,
+            value=30,
+            step=7
+        )
+        
+        if st.button("🧹 Clean Old Data"):
+            deleted = historical_manager.clear_old_data(retention_days)
+            st.success(f"Deleted {deleted} old date directories (keeping last {retention_days} days)")
+    
+    # ========== TAB 2: HISTORICAL ANALYSIS ==========
+    with tab2:
+        st.subheader("📈 Historical Pattern Analysis")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            date_range = st.slider(
+                "Analyze past (days):",
+                min_value=1,
+                max_value=90,
+                value=7
+            )
+        
+        with col2:
+            junction_filter = st.selectbox(
+                "Junction:",
+                ["All"] + [f"Junction {i}" for i in range(multi_controller.num_junctions)]
+            )
+        
+        junction_id = None if junction_filter == "All" else int(junction_filter.split()[-1])
+        
+        # Get statistics
+        stats = historical_manager.get_statistics_summary(date_range, junction_id)
+        
+        if stats.get('status'):
+            st.warning(stats['status'])
+        else:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Vehicles", f"{stats['total_vehicles']:.0f}", "vehicles")
+            with col2:
+                st.metric("Avg Vehicles/Snapshot", f"{stats['average_vehicles_per_snapshot']:.1f}", "vehicles")
+            with col3:
+                st.metric("Peak Vehicles", f"{stats['peak_vehicles']:.0f}", "vehicles")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Avg Congestion", f"{stats['average_congestion']:.1f}%", "level")
+            with col2:
+                st.metric("Peak Congestion", f"{stats['peak_congestion']:.1f}%", "level")
+            with col3:
+                st.metric("Total Snapshots", f"{stats['total_snapshots']}", "records")
+        
+        st.markdown("---")
+        st.subheader("⏰ Peak Hours Analysis")
+        
+        peak_hours = historical_manager.get_peak_hours_history(date_range, junction_id)
+        
+        if peak_hours:
+            # Create visualization
+            hours = list(peak_hours.keys())
+            avg_vehicles = [peak_hours[h]['average_vehicles'] for h in hours]
+            peak_vehicles = [peak_hours[h]['peak_vehicles'] for h in hours]
+            
+            fig, ax = plt.subplots(figsize=(14, 5))
+            
+            ax.bar([h - 0.2 for h in hours], avg_vehicles, width=0.4, label='Average', alpha=0.8, color='#4472C4')
+            ax.bar([h + 0.2 for h in hours], peak_vehicles, width=0.4, label='Peak', alpha=0.8, color='#ED7D31')
+            
+            ax.set_xlabel('Hour of Day', fontsize=11, fontweight='bold')
+            ax.set_ylabel('Number of Vehicles', fontsize=11, fontweight='bold')
+            ax.set_title(f'Peak Traffic Hours (Last {date_range} Days)', fontsize=13, fontweight='bold')
+            ax.legend()
+            ax.grid(axis='y', alpha=0.3)
+            ax.set_xticks(range(0, 24))
+            
+            st.pyplot(fig, use_container_width=True)
+            
+            # Table of peak hours
+            st.markdown("**Peak Hours Summary:**")
+            df_peaks = pd.DataFrame([
+                {
+                    'Hour': f"{h:02d}:00",
+                    'Avg Vehicles': f"{peak_hours[h]['average_vehicles']:.0f}",
+                    'Peak': f"{peak_hours[h]['peak_vehicles']:.0f}",
+                    'Occurrences': peak_hours[h]['occurrences']
+                }
+                for h in sorted(hours)
+            ])
+            st.dataframe(df_peaks, use_container_width=True)
+        else:
+            st.info("No historical data available yet. Simulate traffic to build history.")
+    
+    # ========== TAB 3: PREDICTIONS ==========
+    with tab3:
+        st.subheader("🔮 Predictive Traffic Control")
+        st.markdown("AI learns from history to predict and optimize future signals")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            history_days = st.slider("Train on (days):", 1, 90, 14)
+        with col2:
+            predict_hour = st.selectbox("Predict for hour:", range(24), format_func=lambda x: f"{x:02d}:00")
+        
+        # Get prediction
+        prediction = predictive_analyzer.predict_peak_traffic(predict_hour, history_days)
+        
+        if prediction.get('confidence', 0) > 0:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric(
+                    "Predicted Vehicles",
+                    f"{prediction['predicted_vehicles']:.0f}",
+                    f"at {predict_hour:02d}:00"
+                )
+            with col2:
+                st.metric("Peak Possible", f"{prediction['peak_possible']:.0f}")
+            with col3:
+                st.metric("Confidence", f"{prediction['confidence']:.0f}%")
+            
+            # Suggested timing
+            st.markdown("---")
+            st.subheader("⏱️ Suggested Signal Timing")
+            
+            timing = predictive_analyzer.suggest_signal_timing(predict_hour, history_days)
+            
+            if 'suggested_cycle_time' in timing:
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Cycle Time", f"{timing['suggested_cycle_time']}s")
+                with col2:
+                    st.metric("Min Green", f"{timing['suggested_min_green']}s")
+                with col3:
+                    st.metric("Max Green", f"{timing['suggested_max_green']}s")
+                with col4:
+                    st.metric("Confidence", f"{timing['confidence']:.0f}%")
+                
+                st.success(f"✅ Optimal signal timing calculated for {predict_hour:02d}:00 traffic pattern")
+            else:
+                st.info(timing.get('suggestion', 'Calculating...'))
+        else:
+            st.warning("📊 Insufficient historical data for predictions. Keep simulating to build training data.")
+    
+    # ========== TAB 4: ANOMALIES ==========
+    with tab4:
+        st.subheader("⚠️ Traffic Anomaly Detection")
+        st.markdown("Identify unusual traffic patterns using historical baselines")
+        
+        anomaly_days = st.slider("Analyze (days):", 1, 90, 7)
+        
+        anomalies = predictive_analyzer.detect_anomalies(anomaly_days)
+        
+        if anomalies:
+            st.warning(f"🚨 Found {len(anomalies)} anomalies in traffic patterns")
+            
+            for anomaly in anomalies:
+                with st.container():
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col1:
+                        st.markdown(f"""
+                        **Hour {anomaly['hour']:02d}:00 - Traffic Spike**
+                        - Normal Average: {anomaly['normal_avg']:.0f} vehicles
+                        - Observed Peak: {anomaly['observed_peak']:.0f} vehicles
+                        - Extra Deviation: +{anomaly['deviation']:.0f} vehicles
+                        """)
+                    
+                    with col2:
+                        st.metric("Deviation", f"+{anomaly['deviation']:.0f}")
+        else:
+            st.success("✅ No major traffic anomalies detected. Traffic patterns are stable.")
+    
+    # ========== TAB 5: EXPORT ==========
+    with tab5:
+        st.subheader("📥 Export Historical Data")
+        
+        export_col1, export_col2 = st.columns(2)
+        
+        with export_col1:
+            export_start = st.date_input("From date:", datetime.now() - timedelta(days=7))
+        with export_col2:
+            export_end = st.date_input("To date:", datetime.now())
+        
+        if st.button("📊 Export to CSV"):
+            output_file = f"traffic_history_{export_start}_{export_end}.csv"
+            success = historical_manager.export_to_csv(
+                output_file,
+                export_start,
+                export_end
+            )
+            
+            if success:
+                with open(output_file, 'r') as f:
+                    csv_data = f.read()
+                st.download_button(
+                    label="⬇️ Download CSV",
+                    data=csv_data,
+                    file_name=output_file,
+                    mime="text/csv"
+                )
+                st.success(f"✅ Exported {output_file}")
+            else:
+                st.error("No data found for export")
+
+# ============================================================================
 # MODE 5: PREDICTIVE ANALYTICS (ML-Based Traffic Forecasting)
 # ============================================================================
 elif mode == "Predictive Analytics":
@@ -737,32 +1079,46 @@ elif mode == "Cloud Sync":
     with col2:
         st.markdown("#### Status")
         if cloud_enabled:
-            # Initialize Firebase connection
-            firebase_db = None
+            # FORCE PUSH real data to Firebase with HISTORICAL STORAGE
             try:
-                from firebase_integration import FirebaseRealtimeDB, FirebaseConfig
-                import os
+                import requests
                 
-                if os.path.exists('firebase-config.json'):
-                    config = FirebaseConfig()
-                    if config.load_from_json('firebase-config.json'):
-                        firebase_db = FirebaseRealtimeDB(config)
+                with open('firebase-config.json', 'r') as f:
+                    import json
+                    config = json.load(f)
+                
+                db_url = config.get('databaseURL', '').rstrip('/')
+                
+                # Push REAL data from junctions - stores HISTORICAL data
+                for junc_id in range(multi_controller.num_junctions):
+                    controller = multi_controller.junctions[junc_id]['controller']
+                    stats = controller.get_statistics()
+                    
+                    data = {
+                        'junction_id': f"junction_{junc_id}",
+                        'lane': 'combined',
+                        'vehicle_count': stats['total_vehicles'],
+                        'signal_state': f"Green: {stats.get('current_green_lane', 'UNKNOWN')}",
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    
+                    # Use timestamp as key to store HISTORICAL data
+                    timestamp_key = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:19]
+                    url = f"{db_url}/traffic/history/junction_{junc_id}/{timestamp_key}.json"
+                    response = requests.put(url, json=data, timeout=5)
+                    
+                    # Also update current state for quick access
+                    url_current = f"{db_url}/traffic/current/junction_{junc_id}.json"
+                    requests.put(url_current, json=data, timeout=5)
+                    
+                    # Log success/failure
+                    if response.status_code in [200, 201]:
+                        st.session_state[f"firebase_status_{junc_id}"] = "✅"
+                    else:
+                        st.session_state[f"firebase_status_{junc_id}"] = "⚠️"
                         
-                        # PUSH REAL DATA to Firebase
-                        for junc_id in range(multi_controller.num_junctions):
-                            controller = multi_controller.junctions[junc_id]['controller']
-                            stats = controller.get_statistics()
-                            
-                            firebase_db.push_traffic_data(
-                                junction_id=f"junction_{junc_id}",
-                                lane="combined",
-                                vehicle_count=stats['total_vehicles'],
-                                signal_state=f"Green: {stats.get('current_green_lane', 'UNKNOWN')}",
-                                timestamp=datetime.now()
-                            )
             except Exception as e:
-                print(f"Firebase init error: {e}")
-                firebase_db = None
+                st.warning(f"Firebase push error: {str(e)[:100]}")
             
             # Collect REAL data from all junctions
             total_vehicles = 0
@@ -793,7 +1149,7 @@ elif mode == "Cloud Sync":
             st.session_state.junctions_data = all_junctions_data
             
             # Display status
-            firebase_status = "✅ CONNECTED & PUSHING TO FIREBASE" if firebase_db else "⚠️ LOCAL SYNC ONLY"
+            firebase_status = "✅ CONNECTED & PUSHING TO FIREBASE" if st.session_state.get("firebase_status_0") == "✅" else "⚠️ LOCAL SYNC"
             st.success(f"Cloud Sync: {firebase_status}")
             st.metric("Last Sync", "Just now")
             st.metric("Synced Records", f"{st.session_state.synced_data_count:,}")

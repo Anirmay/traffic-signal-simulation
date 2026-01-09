@@ -74,6 +74,40 @@ See [GOOGLE_INTEGRATION.md](GOOGLE_INTEGRATION.md) for detailed setup and future
 
 ---
 
+## 📚 Historical Traffic Data & Predictive Control
+
+Store and analyze traffic patterns to predict future traffic and optimize signal timing:
+
+### Features
+✅ **Data Storage** - Save traffic snapshots locally and to Firebase  
+✅ **Peak Hour Analysis** - Automatically identify busiest times  
+✅ **Predictions** - Forecast traffic volume for any hour with confidence scores  
+✅ **Anomaly Detection** - Detect unusual traffic patterns  
+✅ **CSV Export** - Download data for external analysis  
+
+### How to Use
+1. Run any simulation (Single Junction / Multi-Junction)
+2. Switch to **"Historical Data"** mode in sidebar
+3. Use 5 tabs:
+   - **💾 Data Storage**: Save current traffic snapshot
+   - **📈 Historical Analysis**: View peak hours & patterns
+   - **🔮 Predictions**: Get traffic forecast & signal suggestions
+   - **⚠️ Anomalies**: Detect unusual traffic spikes
+   - **📥 Export**: Download data as CSV
+
+### Data Structure
+```
+traffic_data/
+├── 2026-01-09/
+│   ├── junction_0/data.jsonl
+│   └── junction_1/data.jsonl
+└── [more dates...]
+```
+
+Each snapshot contains: timestamp, signal states, vehicle counts, congestion levels.
+
+---
+
 ```
 Adaptive Traffic Signal Simulation/
 ├── app.py                 # Main Streamlit application
