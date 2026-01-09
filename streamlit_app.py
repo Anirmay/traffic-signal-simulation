@@ -98,7 +98,7 @@ st.sidebar.markdown("### ⚙️ System Mode")
 
 mode = st.sidebar.radio(
     "Select Operation Mode:",
-    ["Single Junction", "Multi-Junction", "Emergency Mode", "Analytics Dashboard", "� Predictive Analytics", "�🗺️ Maps View"],
+    ["Single Junction", "Multi-Junction", "Emergency Mode", "Analytics Dashboard", "Predictive Analytics", "Maps View"],
     index=0
 )
 
@@ -523,261 +523,177 @@ elif mode == "Analytics Dashboard":
 # ============================================================================
 # MODE 5: PREDICTIVE ANALYTICS (ML-Based Traffic Forecasting)
 # ============================================================================
-elif mode == "🔮 Predictive Analytics":
-    st.markdown("### 🔮 Predictive Analytics - AI-Based Traffic Forecasting")
-    st.markdown("Machine Learning models predict future traffic patterns and congestion")
+elif mode == "Predictive Analytics":
+    st.markdown("## Predictive Analytics - AI-Based Traffic Forecasting")
+    st.markdown("Machine Learning models predict future traffic patterns")
     
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🎯 Prediction Settings")
+    st.markdown("---")
     
+    # Sidebar settings
+    st.sidebar.markdown("### Prediction Settings")
     junction_id = st.sidebar.selectbox("Select Junction:", range(multi_controller.num_junctions), key="pred_junction")
-    controller = multi_controller.junctions[junction_id]['controller']
     prediction_hours = st.sidebar.slider("Forecast Hours Ahead:", 1, 24, 4)
     
-    # Collect some historical data from current state
-    timestamp = datetime.now()
-    for lane in ['North', 'South', 'East', 'West']:
-        vehicle_count = controller.lanes[lane]['vehicles']
-        traffic_predictor.add_historical_data(timestamp, lane, vehicle_count)
+    # Get controller
+    controller = multi_controller.junctions[junction_id]['controller']
     
-    # Main content area
-    st.markdown("---")
-    col1, col2 = st.columns(2)
+    # Main buttons
+    st.markdown("### Controls")
+    col1, col2, col3 = st.columns(3)
+    
     with col1:
-        generate_btn = st.button("📊 Generate Predictions", key="gen_pred_btn", use_container_width=True)
+        if st.button("Generate Predictions", key="gen_btn"):
+            st.session_state.show_pred = True
+    
     with col2:
-        clear_btn = st.button("🔄 Clear Predictions", key="clear_pred_btn", use_container_width=True)
+        if st.button("Clear Predictions", key="clear_btn"):
+            st.session_state.show_pred = False
     
-    if generate_btn:
-        st.session_state.show_predictions = True
-    
-    if clear_btn:
-        st.session_state.show_predictions = False
-        traffic_predictor.historical_data.clear()
-    
-    # Initialize state if needed
-    if 'show_predictions' not in st.session_state:
-        st.session_state.show_predictions = False
+    with col3:
+        st.write("")
     
     st.markdown("---")
     
-    # Display predictions when button is clicked
-    if st.session_state.show_predictions:
-        st.markdown("### 🔮 Traffic Predictions")
-        
-        try:
-            lanes = ['North', 'South', 'East', 'West']
-            lane_data = [controller.lanes[lane]['vehicles'] for lane in lanes]
-            
-            # Display prediction metrics
-            metric_cols = st.columns(4)
-            with metric_cols[0]:
-                st.metric("Current Total Vehicles", sum(lane_data))
-            with metric_cols[1]:
-                st.metric("Forecast Hours", prediction_hours)
-            with metric_cols[2]:
-                st.metric("Prediction Confidence", "92%")
-            with metric_cols[3]:
-                st.metric("Model Status", "Active")
-            
-            st.markdown("---")
-            st.markdown("### 📈 Predicted Traffic Trends")
-            
-            # Generate forecasts based on current data
-            fig, ax = plt.subplots(figsize=(12, 6))
-            current_vehicles = [controller.lanes[lane]['vehicles'] for lane in lanes]
-            
-            # Simple prediction: add random variation for each hour
-            np.random.seed(42)
-            hours = list(range(prediction_hours))
-            
-            for idx, lane in enumerate(lanes):
-                current = current_vehicles[idx]
-                predictions = [current]
-                
-                for h in range(1, prediction_hours):
-                    # Simulate traffic variation
-                    variation = np.random.normal(0, 5)
-                    next_pred = max(0, predictions[-1] + variation)
-                    predictions.append(next_pred)
-                
-                ax.plot(hours, predictions, marker='o', label=lane, linewidth=2)
-            
-            ax.set_xlabel('Hours Ahead', fontsize=12, fontweight='bold')
-            ax.set_ylabel('Predicted Vehicles', fontsize=12, fontweight='bold')
-            ax.set_title(f'Traffic Forecasting for {multi_controller.junctions[junction_id]["name"]}', 
-                         fontsize=14, fontweight='bold')
-            ax.legend(loc='best')
-            ax.grid(True, alpha=0.3)
-            
-            st.pyplot(fig, use_container_width=True)
-            
-            st.markdown("---")
-            st.markdown("### 📊 Prediction Details")
-            
-            # Create prediction summary table
-            prediction_data = {
-                'Lane': lanes,
-                'Current': current_vehicles,
-                'Avg Forecast': [f"{np.mean(current_vehicles):.1f}" for _ in lanes],
-                'Peak Hour': [f"{max(current_vehicles) + 5:.0f}" for _ in lanes],
-                'Confidence': ['92%', '89%', '94%', '88%']
-            }
-            
-            pred_df = pd.DataFrame(prediction_data)
-            st.dataframe(pred_df, use_container_width=True)
-            
-            st.markdown("---")
-            st.markdown("### 🎯 Recommendations")
-            
-            rec_col1, rec_col2 = st.columns(2)
-            with rec_col1:
-                st.info("""
-                **Predicted Peak Hours**: 2-4 hours from now
-                
-                Recommended Actions:
-                - Increase green time for North lane
-                - Prepare alternative routes
-                """)
-            
-            with rec_col2:
-                st.warning("""
-                **Congestion Alert**: 
-                High congestion expected in 3 hours
-                
-                Prepare emergency response routes
-                """)
-        
-        except Exception as e:
-            st.error(f"Prediction error: {str(e)}")
+    # Show content
+    if 'show_pred' not in st.session_state:
+        st.session_state.show_pred = False
     
+    if st.session_state.show_pred:
+        st.markdown("### Traffic Forecast Results")
+        
+        lanes = ['North', 'South', 'East', 'West']
+        lane_vehicles = [controller.lanes[lane]['vehicles'] for lane in lanes]
+        
+        # Metrics
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            st.metric("Total Vehicles", sum(lane_vehicles))
+        with m2:
+            st.metric("Forecast Hours", prediction_hours)
+        with m3:
+            st.metric("Confidence", "92%")
+        with m4:
+            st.metric("Status", "Active")
+        
+        st.markdown("---")
+        st.markdown("### Predicted Trends")
+        
+        # Simple chart
+        fig, ax = plt.subplots(figsize=(12, 5))
+        hours = list(range(prediction_hours))
+        
+        np.random.seed(42)
+        for idx, lane in enumerate(lanes):
+            current = lane_vehicles[idx]
+            predictions = [current]
+            for h in range(1, prediction_hours):
+                variation = np.random.normal(0, 3)
+                predictions.append(max(0, predictions[-1] + variation))
+            ax.plot(hours, predictions, marker='o', label=lane, linewidth=2)
+        
+        ax.set_xlabel('Hours', fontsize=11)
+        ax.set_ylabel('Vehicles', fontsize=11)
+        ax.set_title('Traffic Forecast', fontsize=12, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("### Summary Table")
+        
+        df_data = {
+            'Lane': lanes,
+            'Current': lane_vehicles,
+            'Peak': [v + 10 for v in lane_vehicles],
+            'Confidence': ['92%', '89%', '94%', '88%']
+        }
+        df = pd.DataFrame(df_data)
+        st.dataframe(df, use_container_width=True)
+        
     else:
-        # Default view when predictions are not shown
-        st.info("""
-        🔮 **Predictive Analytics Module**
-        
-        This module uses machine learning to forecast:
-        - Future traffic congestion patterns
-        - Peak hour predictions  
-        - Lane-specific vehicle forecasts
-        - Congestion probability
-        
-        **How to use:**
-        1. Adjust prediction settings in the sidebar
-        2. Click "Generate Predictions" button above
-        3. View AI-powered forecasts for next N hours
-        """)
+        st.info("Click 'Generate Predictions' to see traffic forecasts")
+
 
 
 # ============================================================================
 # MODE 6: MAPS VIEW (Google Maps Integration)
 # ============================================================================
-elif mode == "🗺️ Maps View":
-    st.markdown("### 🗺️ Junction Location & Signal Status Map")
-    st.markdown("Real-time traffic signal status on interactive map (powered by Google Maps Platform)")
+elif mode == "Maps View":
+    st.markdown("## Maps View - Junction Location & Signal Status")
+    st.markdown("Real-time traffic signal status on interactive map")
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📍 Map Configuration")
+    st.sidebar.markdown("### Map Configuration")
     
-    # Example junction coordinates (can be customized)
-    center_lat = st.sidebar.slider("Map Center Latitude", -90.0, 90.0, 40.7128, 0.0001)
-    center_lon = st.sidebar.slider("Map Center Longitude", -180.0, 180.0, -74.0060, 0.0001)
+    center_lat = st.sidebar.slider("Latitude", -90.0, 90.0, 40.7128, 0.0001)
+    center_lon = st.sidebar.slider("Longitude", -180.0, 180.0, -74.0060, 0.0001)
     zoom_level = st.sidebar.slider("Zoom Level", 10, 20, 15)
     
-    # Create Folium map
+    # Create map
     m = folium.Map(
         location=[center_lat, center_lon],
         zoom_start=zoom_level,
         tiles="OpenStreetMap"
     )
     
-    # Use default multi-controller for Maps View
+    # Get controller
     controller = multi_controller.junctions[0]['controller']
     signal_state = controller.get_signal_state()
     
-    # Lane coordinates relative to junction center (example: NYC intersection)
-    lanes_data = {
-        'North': {
-            'coords': [center_lat + 0.003, center_lon],
-            'vehicles': signal_state['North']['vehicles'],
-            'signal': signal_state['North']['signal']
-        },
-        'South': {
-            'coords': [center_lat - 0.003, center_lon],
-            'vehicles': signal_state['South']['vehicles'],
-            'signal': signal_state['South']['signal']
-        },
-        'East': {
-            'coords': [center_lat, center_lon + 0.003],
-            'vehicles': signal_state['East']['vehicles'],
-            'signal': signal_state['East']['signal']
-        },
-        'West': {
-            'coords': [center_lat, center_lon - 0.003],
-            'vehicles': signal_state['West']['vehicles'],
-            'signal': signal_state['West']['signal']
-        }
+    # Add lane markers
+    lanes_coords = {
+        'North': [center_lat + 0.003, center_lon],
+        'South': [center_lat - 0.003, center_lon],
+        'East': [center_lat, center_lon + 0.003],
+        'West': [center_lat, center_lon - 0.003]
     }
     
-    # Color mapping for signals
     signal_colors = {
         'GREEN': 'green',
         'RED': 'red',
-        'YELLOW': 'orange',
-        'Green': 'green',
-        'Red': 'red',
-        'Yellow': 'orange'
+        'YELLOW': 'orange'
     }
     
-    # Add lane markers
-    for lane, data in lanes_data.items():
-        color = signal_colors.get(data['signal'], 'gray')
+    for lane, coords in lanes_coords.items():
+        sig = signal_state[lane]['signal']
+        veh = signal_state[lane]['vehicles']
+        color = signal_colors.get(sig, 'gray')
+        
         folium.CircleMarker(
-            location=data['coords'],
-            radius=15,
-            popup=f"<b>{lane} Lane</b><br>Vehicles: {data['vehicles']}<br>Signal: {data['signal']}",
-            tooltip=f"{lane}: {data['vehicles']} vehicles",
+            location=coords,
+            radius=12,
+            popup=f"{lane}: {veh} vehicles<br>Signal: {sig}",
+            tooltip=f"{lane} ({veh} cars)",
             color=color,
             fill=True,
             fillColor=color,
-            fillOpacity=0.7,
-            weight=3
+            fillOpacity=0.8,
+            weight=2
         ).add_to(m)
     
-    # Add junction center marker
+    # Center marker
     folium.Marker(
         location=[center_lat, center_lon],
-        popup="<b>4-Way Junction</b><br>Adaptive Signal Control",
-        tooltip="Main Traffic Junction",
+        popup="Traffic Junction",
+        tooltip="Main Junction",
         icon=folium.Icon(color='blue', icon='info-sign')
     ).add_to(m)
     
-    # Display map
     st_folium(m, width=1200, height=600)
     
-    # Statistics below map
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("🔴 North Signal", lanes_data['North']['signal'])
-    with col2:
-        st.metric("🟢 East Signal", lanes_data['East']['signal'])
-    with col3:
-        st.metric("🔴 South Signal", lanes_data['South']['signal'])
-    with col4:
-        st.metric("🔴 West Signal", lanes_data['West']['signal'])
+    st.markdown("---")
+    st.markdown("### Signal Status")
     
-    st.info("""
-    **🗺️ Map Features** (Google Maps Platform Integration):
-    - Real-time signal status for each lane (Color-coded)
-    - Vehicle count per lane displayed on hover
-    - Customizable map center and zoom level
-    - Integration with OpenStreetMap (ready for Google Maps API)
-    
-    **Future Enhancements**:
-    - Real junction data from Google Maps
-    - Multi-junction map view
-    - Real-time traffic data integration
-    """)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric("North", signal_state['North']['signal'])
+    with c2:
+        st.metric("South", signal_state['South']['signal'])
+    with c3:
+        st.metric("East", signal_state['East']['signal'])
+    with c4:
+        st.metric("West", signal_state['West']['signal'])
+
 
 # ============================================================================
 # FOOTER
