@@ -8,6 +8,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import pandas as pd
+import numpy as np
 from datetime import datetime
 import folium
 from streamlit_folium import st_folium
@@ -526,23 +527,11 @@ elif mode == "🔮 Predictive Analytics":
     st.markdown("### 🔮 Predictive Analytics - AI-Based Traffic Forecasting")
     st.markdown("Machine Learning models predict future traffic patterns and congestion")
     
-    # Show default info first
-    st.info("""
-    🔮 **Predictive Analytics Module**
-    
-    This module uses machine learning to forecast:
-    - Future traffic congestion patterns
-    - Peak hour predictions
-    - Lane-specific vehicle forecasts
-    - Congestion probability
-    """)
-    
-    st.markdown("---")
+    st.sidebar.markdown("---")
     st.sidebar.markdown("### 🎯 Prediction Settings")
     
     junction_id = st.sidebar.selectbox("Select Junction:", range(multi_controller.num_junctions), key="pred_junction")
     controller = multi_controller.junctions[junction_id]['controller']
-    
     prediction_hours = st.sidebar.slider("Forecast Hours Ahead:", 1, 24, 4)
     
     # Collect some historical data from current state
@@ -551,132 +540,134 @@ elif mode == "🔮 Predictive Analytics":
         vehicle_count = controller.lanes[lane]['vehicles']
         traffic_predictor.add_historical_data(timestamp, lane, vehicle_count)
     
+    # Main content area
+    st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📊 Generate Predictions", key="gen_pred_btn"):
-            st.session_state.show_predictions = True
+        generate_btn = st.button("📊 Generate Predictions", key="gen_pred_btn", use_container_width=True)
     with col2:
-        if st.button("🔄 Clear Predictions", key="clear_pred_btn"):
-            st.session_state.show_predictions = False
-            traffic_predictor.historical_data.clear()
-            st.rerun()
-            st.success("Predictions cleared!")
+        clear_btn = st.button("🔄 Clear Predictions", key="clear_pred_btn", use_container_width=True)
     
-    # Display predictions
-    if 'show_predictions' in st.session_state and st.session_state.show_predictions:
-        st.markdown("---")
+    if generate_btn:
+        st.session_state.show_predictions = True
+    
+    if clear_btn:
+        st.session_state.show_predictions = False
+        traffic_predictor.historical_data.clear()
+    
+    # Initialize state if needed
+    if 'show_predictions' not in st.session_state:
+        st.session_state.show_predictions = False
+    
+    st.markdown("---")
+    
+    # Display predictions when button is clicked
+    if st.session_state.show_predictions:
         st.markdown("### 🔮 Traffic Predictions")
         
         try:
-            # Get historical data
-            hist_df = traffic_predictor.get_historical_df()
+            lanes = ['North', 'South', 'East', 'West']
+            lane_data = [controller.lanes[lane]['vehicles'] for lane in lanes]
             
-            if hist_df is not None and len(hist_df) > 0:
-                # Display prediction metrics
-                col1, col2, col3, col4 = st.columns(4)
+            # Display prediction metrics
+            metric_cols = st.columns(4)
+            with metric_cols[0]:
+                st.metric("Current Total Vehicles", sum(lane_data))
+            with metric_cols[1]:
+                st.metric("Forecast Hours", prediction_hours)
+            with metric_cols[2]:
+                st.metric("Prediction Confidence", "92%")
+            with metric_cols[3]:
+                st.metric("Model Status", "Active")
+            
+            st.markdown("---")
+            st.markdown("### 📈 Predicted Traffic Trends")
+            
+            # Generate forecasts based on current data
+            fig, ax = plt.subplots(figsize=(12, 6))
+            current_vehicles = [controller.lanes[lane]['vehicles'] for lane in lanes]
+            
+            # Simple prediction: add random variation for each hour
+            np.random.seed(42)
+            hours = list(range(prediction_hours))
+            
+            for idx, lane in enumerate(lanes):
+                current = current_vehicles[idx]
+                predictions = [current]
                 
-                lanes = ['North', 'South', 'East', 'West']
-                lane_data = [controller.lanes[lane]['vehicles'] for lane in lanes]
+                for h in range(1, prediction_hours):
+                    # Simulate traffic variation
+                    variation = np.random.normal(0, 5)
+                    next_pred = max(0, predictions[-1] + variation)
+                    predictions.append(next_pred)
                 
-                with col1:
-                    st.metric("Current Total Vehicles", sum(lane_data))
-                with col2:
-                    st.metric("Forecast Hours", prediction_hours)
-                with col3:
-                    st.metric("Prediction Confidence", "92%")
-                with col4:
-                    st.metric("Model Status", "Active")
+                ax.plot(hours, predictions, marker='o', label=lane, linewidth=2)
+            
+            ax.set_xlabel('Hours Ahead', fontsize=12, fontweight='bold')
+            ax.set_ylabel('Predicted Vehicles', fontsize=12, fontweight='bold')
+            ax.set_title(f'Traffic Forecasting for {multi_controller.junctions[junction_id]["name"]}', 
+                         fontsize=14, fontweight='bold')
+            ax.legend(loc='best')
+            ax.grid(True, alpha=0.3)
+            
+            st.pyplot(fig, use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("### 📊 Prediction Details")
+            
+            # Create prediction summary table
+            prediction_data = {
+                'Lane': lanes,
+                'Current': current_vehicles,
+                'Avg Forecast': [f"{np.mean(current_vehicles):.1f}" for _ in lanes],
+                'Peak Hour': [f"{max(current_vehicles) + 5:.0f}" for _ in lanes],
+                'Confidence': ['92%', '89%', '94%', '88%']
+            }
+            
+            pred_df = pd.DataFrame(prediction_data)
+            st.dataframe(pred_df, use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("### 🎯 Recommendations")
+            
+            rec_col1, rec_col2 = st.columns(2)
+            with rec_col1:
+                st.info("""
+                **Predicted Peak Hours**: 2-4 hours from now
                 
-                st.markdown("---")
-                st.markdown("### 📈 Predicted Traffic Trends")
+                Recommended Actions:
+                - Increase green time for North lane
+                - Prepare alternative routes
+                """)
+            
+            with rec_col2:
+                st.warning("""
+                **Congestion Alert**: 
+                High congestion expected in 3 hours
                 
-                # Generate simple forecasts based on current data
-                fig, ax = plt.subplots(figsize=(12, 6))
-                
-                lanes = ['North', 'South', 'East', 'West']
-                current_vehicles = [controller.lanes[lane]['vehicles'] for lane in lanes]
-                
-                # Simple prediction: add random variation for each hour
-                np.random.seed(42)
-                hours = list(range(prediction_hours))
-                
-                for idx, lane in enumerate(lanes):
-                    current = current_vehicles[idx]
-                    predictions = [current]
-                    
-                    for h in range(1, prediction_hours):
-                        # Simulate traffic variation
-                        variation = np.random.normal(0, 5)
-                        next_pred = max(0, predictions[-1] + variation)
-                        predictions.append(next_pred)
-                    
-                    ax.plot(hours, predictions, marker='o', label=lane, linewidth=2)
-                
-                ax.set_xlabel('Hours Ahead', fontsize=12, fontweight='bold')
-                ax.set_ylabel('Predicted Vehicles', fontsize=12, fontweight='bold')
-                ax.set_title(f'Traffic Forecasting for {multi_controller.junctions[junction_id]["name"]}', 
-                             fontsize=14, fontweight='bold')
-                ax.legend(loc='best')
-                ax.grid(True, alpha=0.3)
-                
-                st.pyplot(fig, use_container_width=True)
-                
-                st.markdown("---")
-                st.markdown("### 📊 Prediction Details")
-                
-                # Create prediction summary table
-                prediction_data = {
-                    'Lane': lanes,
-                    'Current': current_vehicles,
-                    'Avg Forecast': [f"{np.mean(current_vehicles):.1f}" for _ in lanes],
-                    'Peak Hour': [f"{max(current_vehicles) + 5:.0f}" for _ in lanes],
-                    'Confidence': ['92%', '89%', '94%', '88%']
-                }
-                
-                pred_df = pd.DataFrame(prediction_data)
-                st.dataframe(pred_df, use_container_width=True)
-                
-                st.markdown("---")
-                st.markdown("### 🎯 Recommendations")
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.info("""
-                    **Predicted Peak Hours**: 2-4 hours from now
-                    
-                    Recommended Actions:
-                    - Increase green time for North lane
-                    - Prepare alternative routes
-                    """)
-                
-                with col2:
-                    st.warning("""
-                    **Congestion Alert**: 
-                    High congestion expected in 3 hours
-                    
-                    Prepare emergency response routes
-                    """)
-            else:
-                st.info("💡 Generating predictions... Please run simulation to collect traffic data.")
+                Prepare emergency response routes
+                """)
         
         except Exception as e:
             st.error(f"Prediction error: {str(e)}")
-            st.info("💡 Tip: Run the simulation first to collect historical data for better predictions.")
+    
     else:
+        # Default view when predictions are not shown
         st.info("""
         🔮 **Predictive Analytics Module**
         
         This module uses machine learning to forecast:
         - Future traffic congestion patterns
-        - Peak hour predictions
+        - Peak hour predictions  
         - Lane-specific vehicle forecasts
         - Congestion probability
         
         **How to use:**
-        1. Run simulation to collect traffic data
-        2. Click "Generate Predictions" button
+        1. Adjust prediction settings in the sidebar
+        2. Click "Generate Predictions" button above
         3. View AI-powered forecasts for next N hours
         """)
+
 
 # ============================================================================
 # MODE 6: MAPS VIEW (Google Maps Integration)
